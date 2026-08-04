@@ -1,14 +1,12 @@
-from datetime import datetime
+from modules.system import SystemHandler
 
 class Router:
+    def __init__(self):
+        self.system = SystemHandler()
+    
     def handle(self, command):
-        command = command.lower()
+        result = self.system.handle(command)
         
-        if "time" in command:
-            return f"The current time is {datetime.now().strftime('%I:%M %p')}"
-        
-        elif "date" in command:
-            return f"Tpday's date is {datetime.now().strftime('%d %B %Y')}"
-        
-        else:
-            return "Sorry, I don't understand that command yet."
+        if result:
+            return result 
+        return "Sorry, I don't understand."
