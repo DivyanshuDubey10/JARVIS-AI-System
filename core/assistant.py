@@ -1,8 +1,7 @@
-from core.router import Router
+from core.router import CommandRouter
 
 class Assistant:
-    def __init__(self):
-        self.router = Router()
+    def __init__(self): self.router = CommandRouter()
         
     def run(self):
         print("=" * 50)

@@ -1,12 +1,16 @@
 from modules.system import SystemHandler
+from modules.browser import BrowserHandler
 
-class Router:
+class CommandRouter:
     def __init__(self):
-        self.system = SystemHandler()
-    
+        self.handlers = [
+            SystemHandler(),
+            BrowserHandler(),
+        ]
     def handle(self, command):
-        result = self.system.handle(command)
-        
-        if result:
-            return result 
+        for handler in self.handlers:
+            result = handler.handle(command)
+            if result is not None:
+                return result
+             
         return "Sorry, I don't understand."
