@@ -1,8 +1,11 @@
 from core.router import CommandRouter
+from core.parser import CommandParser
 
 class Assistant:
-    def __init__(self): self.router = CommandRouter()
-        
+    def __init__(self): 
+        self.router = CommandRouter()
+        self.parser = CommandParser()
+
     def run(self):
         print("=" * 50)
         print("JARVIS AI SYSTEM")
@@ -18,6 +21,7 @@ class Assistant:
                 print("Jarvis: Goodybye!")
                 break
             
-            response = self.router.handle(command)
+            parsed_command = self.parser.parse(command)
+            response = self.router.handle(parsed_command)
             
             print(f"Jarvis: {response}")

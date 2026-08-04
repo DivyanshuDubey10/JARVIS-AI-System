@@ -31,8 +31,8 @@ class BrowserHandler:
     def handle(self, command):   
         command = command.lower()
         
-        if command.startswith("open "):
-            website = command.replace("open ", "").strip()
+        if command.action == "open":
+            website = command.target    
             
             if website in self.websites:
                 webbrowser.open(self.websites[website])

@@ -14,13 +14,13 @@ class SystemHandler:
     def handle(self, command):
         command = command.lower()
         
-        if "time" in command:
+        if command.action == "time":
             return datetime.now().strftime("%I:%M %p")
         
-        elif "date" in command:
+        elif command.action == "date":
             return datetime.now().strftime("%d %B %Y")
-        elif command.startswith("open "):
-            app = command.replace("open ", "").strip()
+        elif command.action == "open":
+            app = command.target
             
             if app in self.apps:
                 subprocess.Popen(self.apps[app])
