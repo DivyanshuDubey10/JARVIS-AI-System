@@ -1,6 +1,8 @@
 import subprocess
 from datetime import datetime
 
+from core.parser import Command
+
 class SystemHandler:
     def __init__(self):
         self.apps = {
@@ -12,7 +14,6 @@ class SystemHandler:
         }
         
     def handle(self, command):
-        command = command.lower()
         
         if command.action == "time":
             return datetime.now().strftime("%I:%M %p")

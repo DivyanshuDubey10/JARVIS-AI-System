@@ -29,7 +29,6 @@ class BrowserHandler:
             "github": "https://github.com/search?q={query}"
         }
     def handle(self, command):   
-        command = command.lower()
         
         if command.action == "open":
             website = command.target    
@@ -44,5 +43,8 @@ class BrowserHandler:
             
             webbrowser.open(f"https://www.{website}.com")
             return f"trying to open {website.title()}..."
+        if command.action == "search":
+                    engine = command.target
+                    query = command.query
         
         return None
