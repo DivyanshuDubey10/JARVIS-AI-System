@@ -33,6 +33,9 @@ class BrowserHandler:
         if command.action == "open":
             website = command.target    
             
+            if website is None:
+                return "What would you like me to open?"
+            
             if website in self.websites:
                 webbrowser.open(self.websites[website])
                 return f"Opening {website.title()}..."

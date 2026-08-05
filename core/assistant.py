@@ -1,11 +1,13 @@
 from core.router import CommandRouter
 from core.parser import CommandParser
 from core.speech import SpeechEngine
+from voice.listener import VoiceListener
 
 class Assistant:
     def __init__(self):
         self.router = CommandRouter()
         self.parser = CommandParser()
+        self.listener = VoiceListener() 
         self.speech = SpeechEngine()
 
     def run(self):
@@ -15,7 +17,7 @@ class Assistant:
         print("=" * 50)
 
         while True:
-            command = input("\nYou: ").strip()
+            command = self.listener.listen()
 
             if not command:
                 continue
