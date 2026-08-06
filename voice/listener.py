@@ -11,7 +11,7 @@ class VoiceListener:
         with sr.Microphone() as source:
             print("Listening...")
             self.recognizer.adjust_for_ambient_noise(source, duration=0.2)
-            audio = self.recognizer.listen(source, timeout=3, phrase_time_limit=4)
+            audio = self.recognizer.listen(source, timeout=5, phrase_time_limit=4)
             
         try: 
             text = self.recognizer.recognize_google(audio)
