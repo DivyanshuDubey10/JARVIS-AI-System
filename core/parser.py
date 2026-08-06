@@ -45,6 +45,30 @@ class CommandParser:
     "date": "date",
     "today": "date"
     }
+    KNOWN_APPS = {
+    "chrome",
+    "notepad",
+    "calculator",
+    "paint",
+    "cmd"
+    }
+
+    KNOWN_WEBSITES = {
+        "youtube",
+        "github",
+        "google",
+        "gmail",
+        "linkedin",
+        "spotify",
+        "instagram",
+        "amazon",
+        "chatgpt",
+        "claude",
+        "gemini",
+        "netflix",
+        "prime",
+        "wikipedia"
+    }
 
     def clean_text(self, text):
         words = text.lower().split()
@@ -64,6 +88,17 @@ class CommandParser:
 
         if not words:
             return None
+        
+        target = None
+
+        for word in words:
+            if word in self.KNOWN_APPS:
+                target = word
+                break
+
+            if word in self.KNOWN_WEBSITES:
+                target = word
+                break
 
         for word in words:
             if word in self.ACTION_SYNONYMS:
