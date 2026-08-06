@@ -2,11 +2,13 @@ from core.router import CommandRouter
 from core.parser import CommandParser
 from core.speech import SpeechEngine
 from voice.listener import VoiceListener
+from core.memory import ConversationMemory
 
 class Assistant:
     def __init__(self):
         self.router = CommandRouter()
         self.parser = CommandParser()
+        self.memory = ConversationMemory()
         self.listener = VoiceListener() 
         self.speech = SpeechEngine()
 
@@ -27,10 +29,11 @@ class Assistant:
                 break
 
             parsed_command = self.parser.parse(command)
-            response = self.router.handle(parsed_command)
+            response = self.router.handle(parsed_command, self.memory.get_messages())
 
+            self.memory.add_assistant(response)
             self.respond(response)
-            
+
     def respond(self, message):
         print(f"Jarvis: {message}")
         self.speech.speak(message)
