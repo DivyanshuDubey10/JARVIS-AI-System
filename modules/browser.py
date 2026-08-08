@@ -39,7 +39,7 @@ class BrowserHandler:
             if website in self.websites:
                 webbrowser.open(self.websites[website])
                 return f"Opening {website.title()}..."
-            
+        
             if "." in website:
                 webbrowser.open(f"https://{website}")
                 return f"Opening {website}..."

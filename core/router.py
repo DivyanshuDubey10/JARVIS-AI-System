@@ -1,7 +1,3 @@
-from logging.handlers import MemoryHandler
-
-from click import command
-
 from modules.system import SystemHandler
 from modules.browser import BrowserHandler
 from modules.ai import AIHandler

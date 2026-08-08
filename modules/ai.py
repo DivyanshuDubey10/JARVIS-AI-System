@@ -1,15 +1,13 @@
 import os
 from dotenv import load_dotenv
-from google import genai
+from core.ai_service import AIService
 
 load_dotenv()
 
 
 class AIHandler:
     def __init__(self):
-        self.client = genai.Client(
-            api_key=os.getenv("GEMINI_API_KEY")
-        )
+        self.ai = AIService()
 
     def handle(self, command, history=None):
         
@@ -27,8 +25,9 @@ class AIHandler:
             "detailed",
             "elaborate",
             "teach",
-            "why",
-            "how"
+            "in detail",
+            "teach me",
+            "explain in detail"
         }
 
         detailed = any(
@@ -38,14 +37,13 @@ class AIHandler:
 
         if detailed:
             system_prompt = """
-You are JARVIS, a desktop AI voice assistant.
+        You are JARVIS.
 
-Rules:
-- Give a detailed and well-structured explanation.
-- Use simple language.
-- Be accurate and helpful.
-- Your response will be spoken aloud.
-"""
+        The user has asked for a detailed explanation.
+
+        Give a complete explanation.
+        Use examples if appropriate.
+        """
         else:
             system_prompt = """
 You are JARVIS, a desktop AI voice assistant.
@@ -61,18 +59,15 @@ Rules:
 {system_prompt}
 
 Conversation History:
-{history}
+{history_text}
 
 User: {command.raw_text}
 """
 
         try:
-            response = self.client.models.generate_content(
-                model="gemini-3.6-flash",
-                contents=prompt
-            )
+            response = self.ai.generate(prompt)
 
-            return response.text
-
+            return response
+        
         except Exception as e:
             return f"AI Error: {e}"
