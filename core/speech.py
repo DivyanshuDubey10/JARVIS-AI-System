@@ -59,7 +59,6 @@ class SpeechEngine:
         self.stop_requested = False
         self.listening_for_stop = True
 
-        # Start background interrupt listener
         self.stop_thread = threading.Thread(
             target=self._listen_for_stop,
             daemon=True
@@ -73,57 +72,10 @@ class SpeechEngine:
         finally:
             self.listening_for_stop = False
 
-    def _listen_for_stop(self):
+            if self.stop_thread and self.stop_thread.is_alive():
+                self.stop_thread.join(timeout=1.5)
 
-        recognizer = sr.Recognizer()
-
-        STOP_WORDS = {
-            "stop",
-            "cancel",
-            "quiet",
-            "shut up",
-            "be quiet"
-        }
-
-        with sr.Microphone() as source:
-
-            recognizer.energy_threshold = 300
-            recognizer.dynamic_energy_threshold = True
-
-            while self.listening_for_stop:
-
-                try:
-                    audio = recognizer.listen(
-                        source,
-                        timeout=1,
-                        phrase_time_limit=2
-                    )
-
-                    text = (
-                        recognizer
-                        .recognize_google(audio)
-                        .lower()
-                        .strip()
-                    )
-
-                    print(f"Interrupt listener: {text}")
-
-                    if text in STOP_WORDS:
-
-                        print("Interrupt detected!")
-
-                        self.stop()
-
-                        break
-
-                except sr.WaitTimeoutError:
-                    continue
-
-                except sr.UnknownValueError:
-                    continue
-
-                except sr.RequestError:
-                    continue
+            self.stop_thread = None
 
     async def _speak(self, text):
 
@@ -163,9 +115,59 @@ class SpeechEngine:
             if os.path.exists(filename):
                 os.remove(filename)
 
-    def stop(self):
+    def _listen_for_stop(self):
 
-        print("Stopping speech...")
+        recognizer = sr.Recognizer()
+
+        STOP_WORDS = {
+            "stop",
+            "cancel",
+            "quiet",
+            "shut up",
+            "be quiet"
+        }
+
+        with sr.Microphone() as source:
+
+            recognizer.pause_threshold = 1.0
+            recognizer.phrase_threshold = 0.3
+            recognizer.non_speaking_duration = 0.5
+            recognizer.energy_threshold = 100
+            recognizer.dynamic_energy_threshold = False
+
+            while self.listening_for_stop:
+
+                try:
+
+                    audio = recognizer.listen(
+                        source,
+                        timeout=0.5,
+                        phrase_time_limit=1
+                    )
+
+                    text = (
+                        recognizer
+                        .recognize_google(audio)
+                        .lower()
+                        .strip()
+                    )
+
+                    if text in STOP_WORDS:
+
+                        self.stop()
+
+                        break
+
+                except sr.WaitTimeoutError:
+                    continue
+
+                except sr.UnknownValueError:
+                    continue
+
+                except sr.RequestError:
+                    continue
+
+    def stop(self):
 
         self.stop_requested = True
         self.listening_for_stop = False

@@ -45,56 +45,69 @@ class Assistant:
                 continue
 
             # --------------------------------
-            # WAKE WORD
+            # WAKE WORD / COMMAND HANDLING
             # --------------------------------
 
-            if not self.awake:
+            if command == WAKE_WORD:
+                self.awake = True
+                self.last_activity = time.time()
+                self.respond("Yes?")
+                continue
 
-                # "jarvis"
-                if command == WAKE_WORD:
-                    self.awake = True
-                    self.last_activity = time.time()
-                    self.respond("Yes?")
-                    continue
+            # "jarvis open chrome"
+            if command.startswith(WAKE_WORD + " "):
+                self.awake = True
+                self.last_activity = time.time()
+                command = command[len(WAKE_WORD):].strip()
 
-                # "jarvis open chrome"
-                if command.startswith(WAKE_WORD + " "):
-
-                    self.awake = True
-                    self.last_activity = time.time()
-
-                    command = command[len(WAKE_WORD):].strip()
-
-                else:
-                    # Ignore speech when asleep
-                    continue
+            # Normal command without wake word
+            else:
+                self.last_activity = time.time()
 
             # --------------------------------
             # ACTIVE CONVERSATION
             # --------------------------------
 
             self.last_activity = time.time()
+            
+            if command.lower() in [
+                "what did i ask",
+                "what did i ask you",
+                "what was my question",
+                "what did i just ask",
+                "what did i just ask you"
+            ]:
+                
+                user_messages = [
+                message["content"]
+                for message in self.memory.get_messages()
+                if message["role"] == "user"
+                ]
+
+                if user_messages:
+                    self.respond(f"You asked: {user_messages[-1]}")
+                else:
+                    self.respond("You haven't asked me anything yet.")
+
+                continue
 
             parsed_command = self.parser.parse(command)
 
             if parsed_command is None:
                 continue
 
-            self.memory.add_user(parsed_command.raw_text)
+            history = self.memory.get_messages()
 
             response = self.router.handle(
                 parsed_command,
-                self.memory.get_messages()
+                history
             )
 
-            # Memory
+            self.memory.add_user(parsed_command.raw_text)
+
             if response:
                 self.memory.add_assistant(response)
-
-            # Speak
-            if response:
                 self.respond(response)
-            
             
     def respond(self, message):
         if not message:

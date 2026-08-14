@@ -1,16 +1,13 @@
-import os
-from dotenv import load_dotenv
 from core.ai_service import AIService
-
-load_dotenv()
 
 
 class AIHandler:
+
     def __init__(self):
         self.ai = AIService()
 
     def handle(self, command, history=None):
-        
+
         history_text = ""
 
         if history:
@@ -25,33 +22,45 @@ class AIHandler:
             "detailed",
             "elaborate",
             "teach",
-            "in detail",
-            "teach me",
-            "explain in detail"
+            "in detail"
         }
 
+        text = command.raw_text.lower()
+
         detailed = any(
-            word in command.raw_text.lower()
+            word in text
             for word in detail_words
         )
 
         if detailed:
-            system_prompt = """
-        You are JARVIS.
 
-        The user has asked for a detailed explanation.
-
-        Give a complete explanation.
-        Use examples if appropriate.
-        """
-        else:
             system_prompt = """
 You are JARVIS, a desktop AI voice assistant.
 
 Rules:
-- Answer in 2-3 short sentences.
+- Answer in 1-3 short sentences.
 - Be direct and concise.
-- Avoid unnecessary introductions.
+- Usually stay below 50 words.
+- Do not repeat the user's question.
+- Do not add unnecessary introductions.
+- Do not ask "How may I assist you?" unless appropriate.
+- When the user asks about something they previously said or asked, use the Conversation History.
+- If the user asks what they previously asked, identify the most recent relevant User message from the Conversation History, not the current question.
+- Your response will be spoken aloud.
+"""
+
+        else:
+
+            system_prompt = """
+You are JARVIS, a desktop AI voice assistant.
+
+Rules:
+- Answer in 1-3 short sentences.
+- Be direct and concise.
+- Usually stay below 50 words.
+- Do not repeat the user's question.
+- Do not add unnecessary introductions.
+- Do not ask "How may I assist you?" unless appropriate.
 - Your response will be spoken aloud.
 """
 
@@ -61,13 +70,20 @@ Rules:
 Conversation History:
 {history_text}
 
-User: {command.raw_text}
+Current User Request:
+{command.raw_text}
+
+Answer the Current User Request now.
 """
 
         try:
+
             response = self.ai.generate(prompt)
 
             return response
-        
+
         except Exception as e:
+
+            print("AI HANDLER ERROR:", e)
+
             return f"AI Error: {e}"

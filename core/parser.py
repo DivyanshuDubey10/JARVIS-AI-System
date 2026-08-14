@@ -12,45 +12,42 @@ class Command:
 
 class CommandParser:
 
-    STOP_WORDS = {
+    # Only remove words that are safe to remove from command prefixes.
+    # DO NOT remove normal conversational words like "you".
+    POLITE_WORDS = {
         "please",
-        "can",
         "could",
         "would",
-        "you",
-        "the",
-        "a",
-        "an",
-        "jarvis",
         "hey"
     }
-    
+
     ACTION_SYNONYMS = {
-    # Open
-    "open": "open",
-    "launch": "open",
-    "start": "open",
-    "run": "open",
+        # Open
+        "open": "open",
+        "launch": "open",
+        "start": "open",
+        "run": "open",
 
-    # Search
-    "search": "search",
-    "find": "search",
-    "lookup": "search",
+        # Search
+        "search": "search",
+        "find": "search",
+        "lookup": "search",
 
-    # Time
-    "time": "time",
-    "clock": "time",
+        # Time
+        "time": "time",
+        "clock": "time",
 
-    # Date
-    "date": "date",
-    "today": "date"
+        # Date
+        "date": "date",
+        "today": "date"
     }
+
     KNOWN_APPS = {
-    "chrome",
-    "notepad",
-    "calculator",
-    "paint",
-    "cmd"
+        "chrome",
+        "notepad",
+        "calculator",
+        "paint",
+        "cmd"
     }
 
     KNOWN_WEBSITES = {
@@ -71,26 +68,42 @@ class CommandParser:
     }
 
     def clean_text(self, text):
-        words = text.lower().split()
+        words = text.lower().strip().split()
 
-        words = [
-            word for word in words
-            if word not in self.STOP_WORDS
-        ]
+        # Remove only polite/filler words.
+        # Keep words like "you", "the", "a", etc.
+        while words and words[0] in self.POLITE_WORDS:
+            words.pop(0)
 
         return " ".join(words)
 
     def parse(self, text):
 
-        text = self.clean_text(text)
+        # Preserve the user's actual words for AI.
+        original_text = text.lower().strip()
 
-        words = text.split()
+        if not original_text:
+            return None
+
+        # Remove only optional command prefixes for command detection.
+        command_text = self.clean_text(original_text)
+
+        words = command_text.split()
 
         if not words:
             return None
-        
-        target = None
 
+        action = None
+        target = None
+        query = None
+
+        # Find an action.
+        for word in words:
+            if word in self.ACTION_SYNONYMS:
+                action = self.ACTION_SYNONYMS[word]
+                break
+
+        # Find known application or website.
         for word in words:
             if word in self.KNOWN_APPS:
                 target = word
@@ -100,14 +113,33 @@ class CommandParser:
                 target = word
                 break
 
-        for word in words:
-            if word in self.ACTION_SYNONYMS:
-                action = self.ACTION_SYNONYMS[word]
-                break
-        else:
-            action = None
+        # Handle structured commands.
+        if action is not None:
 
-        target = words[1] if len(words) > 1 else None
-        query = " ".join(words[2:]) if len(words) > 2 else None
+            action_index = None
 
-        return Command(text, action, target, query)
+            for i, word in enumerate(words):
+                if word in self.ACTION_SYNONYMS:
+                    action_index = i
+                    break
+
+            if action_index is not None:
+
+                remaining = words[action_index + 1:]
+
+                if remaining:
+                    if target is None:
+                        target = remaining[0]
+
+                    if len(remaining) > 1:
+                        query = " ".join(remaining[1:])
+
+        # IMPORTANT:
+        # raw_text contains the user's actual question,
+        # not the command-cleaned version.
+        return Command(
+            raw_text=original_text,
+            action=action,
+            target=target,
+            query=query
+        )
