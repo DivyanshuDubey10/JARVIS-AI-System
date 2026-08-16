@@ -1,12 +1,14 @@
 from modules.system import SystemHandler
 from modules.browser import BrowserHandler
 from modules.ai import AIHandler
+from modules.system_info import SystemInfoHandler
 
 class CommandRouter:
     def __init__(self):
         self.handlers = [
             SystemHandler(),
             BrowserHandler(),
+            SystemInfoHandler(),
         ]
         self.ai = AIHandler()
 
