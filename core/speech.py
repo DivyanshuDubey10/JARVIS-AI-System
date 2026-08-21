@@ -18,7 +18,9 @@ class SpeechEngine:
         self.stop_requested = False
         self.listening_for_stop = False
         self.stop_thread = None
-
+        self.speech_lock = threading.Lock()
+        
+        
     def clean_text(self, text):
         # Remove asterisks / Markdown formatting
         text = re.sub(r'\*+', '', text)
@@ -56,26 +58,28 @@ class SpeechEngine:
         if not text:
             return
 
-        self.stop_requested = False
-        self.listening_for_stop = True
+        with self.speech_lock:
 
-        self.stop_thread = threading.Thread(
-            target=self._listen_for_stop,
-            daemon=True
-        )
+            self.stop_requested = False
+            self.listening_for_stop = True
 
-        self.stop_thread.start()
+            self.stop_thread = threading.Thread(
+                target=self._listen_for_stop,
+                daemon=True
+            )
 
-        try:
-            asyncio.run(self._speak(text))
+            self.stop_thread.start()
 
-        finally:
-            self.listening_for_stop = False
+            try:
+                asyncio.run(self._speak(text))
 
-            if self.stop_thread and self.stop_thread.is_alive():
-                self.stop_thread.join(timeout=1.5)
+            finally:
+                self.listening_for_stop = False
 
-            self.stop_thread = None
+                if self.stop_thread and self.stop_thread.is_alive():
+                    self.stop_thread.join(timeout=1.5)
+
+                self.stop_thread = None
 
     async def _speak(self, text):
 
