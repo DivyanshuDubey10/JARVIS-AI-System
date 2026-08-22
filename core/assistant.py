@@ -1,4 +1,5 @@
 import time
+
 from core.router import CommandRouter
 from core.parser import CommandParser
 from core.speech import SpeechEngine
@@ -15,51 +16,15 @@ class Assistant:
         self.listener = VoiceListener()
         self.speech = SpeechEngine()
 
-        # Messages from background tasks are placed here.
-        self.pending_messages = []
-
-        self.router = CommandRouter(
-            timer_callback=self.queue_message
-        )
+        self.router = CommandRouter()
 
         self.awake = False
         self.last_activity = time.time()
 
-    def queue_message(self, message):
-        """Receive messages from background tasks."""
-        if message:
-            self.pending_messages.append(message)
-            
-    def run_countdown(self, seconds):
+    # --------------------------------
+    # TIMER
+    # --------------------------------
 
-        # Short timers get a spoken countdown.
-        if seconds <= 30:
-
-            end_time = time.monotonic() + seconds
-
-            for number in range(seconds, 0, -1):
-
-                # Wait until the correct countdown point.
-                target_time = end_time - (number - 1)
-
-                remaining_wait = target_time - time.monotonic()
-
-                if remaining_wait > 0:
-                    time.sleep(remaining_wait)
-
-                # Speak the number.
-                self.respond(str(number))
-
-            self.respond("Time's up.")
-
-        else:
-
-            # Long timers don't speak every number.
-            time.sleep(seconds)
-
-            self.respond("Time's up.")
-            
-            
     def run_countdown(self, seconds):
 
         if seconds <= 30:
@@ -70,7 +35,9 @@ class Assistant:
 
                 target_time = end_time - (number - 1)
 
-                remaining_wait = target_time - time.monotonic()
+                remaining_wait = (
+                    target_time - time.monotonic()
+                )
 
                 if remaining_wait > 0:
                     time.sleep(remaining_wait)
@@ -84,8 +51,11 @@ class Assistant:
             time.sleep(seconds)
 
             self.respond("Time's up.")
-            
-            
+
+    # --------------------------------
+    # MAIN LOOP
+    # --------------------------------
+
     def run(self):
 
         print("=" * 50)
@@ -98,21 +68,16 @@ class Assistant:
         while True:
 
             # --------------------------------
-            # BACKGROUND MESSAGES
-            # --------------------------------
-
-            if self.pending_messages:
-
-                message = self.pending_messages.pop(0)
-                self.respond(message)
-                continue
-
-            # --------------------------------
             # SLEEP TIMEOUT
             # --------------------------------
 
-            if self.awake and time.time() - self.last_activity > 30:
+            if (
+                self.awake
+                and time.time() - self.last_activity > 30
+            ):
+
                 print("Going back to sleep...")
+
                 self.awake = False
 
             # --------------------------------
@@ -129,15 +94,23 @@ class Assistant:
             # --------------------------------
 
             if command == "exit":
+
                 self.respond("Goodbye.")
+
                 break
 
             # --------------------------------
             # STOP
             # --------------------------------
 
-            if command in ["stop", "cancel", "quiet"]:
+            if command in [
+                "stop",
+                "cancel",
+                "quiet"
+            ]:
+
                 self.speech.stop()
+
                 continue
 
             # --------------------------------
@@ -150,17 +123,26 @@ class Assistant:
                 self.last_activity = time.time()
 
                 self.respond("Yes?")
+
                 continue
 
-            # "jarvis open chrome"
-            if command.startswith(WAKE_WORD + " "):
+            # --------------------------------
+            # WAKE WORD + COMMAND
+            # --------------------------------
+
+            if command.startswith(
+                WAKE_WORD + " "
+            ):
 
                 self.awake = True
                 self.last_activity = time.time()
 
-                command = command[len(WAKE_WORD):].strip()
+                command = command[
+                    len(WAKE_WORD):
+                ].strip()
 
             else:
+
                 self.last_activity = time.time()
 
             # --------------------------------
@@ -168,24 +150,35 @@ class Assistant:
             # --------------------------------
 
             if command.lower() in [
+
                 "what did i ask",
                 "what did i ask you",
                 "what was my question",
                 "what did i just ask",
                 "what did i just ask you"
+
             ]:
 
                 user_messages = [
+
                     message["content"]
-                    for message in self.memory.get_messages()
+
+                    for message
+                    in self.memory.get_messages()
+
                     if message["role"] == "user"
+
                 ]
 
                 if user_messages:
+
                     self.respond(
-                        f"You asked: {user_messages[-1]}"
+                        f"You asked: "
+                        f"{user_messages[-1]}"
                     )
+
                 else:
+
                     self.respond(
                         "You haven't asked me anything yet."
                     )
@@ -196,13 +189,27 @@ class Assistant:
             # PARSE COMMAND
             # --------------------------------
 
-            parsed_command = self.parser.parse(command)
+            parsed_command = self.parser.parse(
+                command
+            )
+
+            if parsed_command:
+
+                print(
+                    f"Command → "
+                    f"Action: "
+                    f"{parsed_command.action}, "
+                    f"Target: "
+                    f"{parsed_command.target}, "
+                    f"Query: "
+                    f"{parsed_command.query}"
+                )
 
             if parsed_command is None:
                 continue
 
             # --------------------------------
-            # AI / SYSTEM / BROWSER
+            # ROUTER
             # --------------------------------
 
             history = self.memory.get_messages()
@@ -212,7 +219,10 @@ class Assistant:
                 history
             )
 
-            # Store user's message ONCE
+            # --------------------------------
+            # MEMORY
+            # --------------------------------
+
             self.memory.add_user(
                 parsed_command.raw_text
             )
@@ -221,18 +231,25 @@ class Assistant:
             # TIMER
             # --------------------------------
 
-            if isinstance(response, dict) and response.get("type") == "timer":
+            if (
+                isinstance(response, dict)
+                and response.get("type") == "timer"
+            ):
 
                 message = response["message"]
                 seconds = response["seconds"]
 
-                self.memory.add_assistant(message)
+                self.memory.add_assistant(
+                    message
+                )
 
-                # Speak confirmation first
+                # Confirm timer
                 self.respond(message)
 
-                # Run countdown
-                self.run_countdown(seconds)
+                # Run timer
+                self.run_countdown(
+                    seconds
+                )
 
                 continue
 
@@ -242,15 +259,25 @@ class Assistant:
 
             if response:
 
-                self.memory.add_assistant(response)
+                self.memory.add_assistant(
+                    response
+                )
 
                 self.respond(response)
+
+    # --------------------------------
+    # SPEAK
+    # --------------------------------
 
     def respond(self, message):
 
         if not message:
             return
 
-        print(f"Jarvis: {message}")
+        print(
+            f"Jarvis: {message}"
+        )
 
-        self.speech.speak(message)
+        self.speech.speak(
+            message
+        )

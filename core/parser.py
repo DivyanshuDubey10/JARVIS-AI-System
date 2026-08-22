@@ -12,32 +12,61 @@ class Command:
 
 class CommandParser:
 
-    # Only remove words that are safe to remove from command prefixes.
-    # DO NOT remove normal conversational words like "you".
+    # Words that can safely be removed from the beginning
+    # of a command.
     POLITE_WORDS = {
         "please",
         "could",
         "would",
-        "hey"
+        "can",
+        "will",
+        "hey",
+        "kindly"
+    }
+
+    # Words that don't provide useful information when
+    # identifying a command target.
+    FILLER_WORDS = {
+        "my",
+        "the",
+        "a",
+        "an",
+        "for",
+        "on",
+        "in",
+        "to"
     }
 
     ACTION_SYNONYMS = {
-        # Open
+
+        # -----------------------------
+        # OPEN
+        # -----------------------------
+
         "open": "open",
         "launch": "open",
         "start": "open",
         "run": "open",
 
-        # Search
+        # -----------------------------
+        # SEARCH
+        # -----------------------------
+
         "search": "search",
         "find": "search",
         "lookup": "search",
 
-        # Time
+        # -----------------------------
+        # TIME
+        # -----------------------------
+
         "time": "time",
         "clock": "time",
 
-        # Date
+        # -----------------------------
+        # DATE
+        # -----------------------------
+
         "date": "date",
         "today": "date"
     }
@@ -54,7 +83,6 @@ class CommandParser:
         "explorer",
         "whatsapp"
     }
-
 
     KNOWN_WEBSITES = {
         "youtube",
@@ -74,75 +102,219 @@ class CommandParser:
     }
 
     def clean_text(self, text):
+
         words = text.lower().strip().split()
 
-        # Remove only polite/filler words.
-        # Keep words like "you", "the", "a", etc.
-        while words and words[0] in self.POLITE_WORDS:
-            words.pop(0)
+        # Remove polite words wherever they appear.
+        words = [
+            word
+            for word in words
+            if word not in self.POLITE_WORDS
+        ]
 
         return " ".join(words)
 
+    def find_action(self, words):
+
+        # Multi-word actions first
+        for i in range(len(words) - 1):
+
+            phrase = f"{words[i]} {words[i + 1]}"
+
+            if phrase == "look up":
+                return "search"
+
+        # Single-word actions
+        for word in words:
+
+            if word in self.ACTION_SYNONYMS:
+                return self.ACTION_SYNONYMS[word]
+
+        return None
+
+    def find_target(self, words):
+
+        # First prioritize known apps/folders.
+        for word in words:
+
+            if word in self.KNOWN_APPS:
+                return word
+
+        # Then websites.
+        for word in words:
+
+            if word in self.KNOWN_WEBSITES:
+                return word
+
+        return None
+
+    def parse_search(self, words, action_index):
+
+        # Everything after the search action.
+        remaining = words[action_index + 1:]
+
+        if not remaining:
+            return None, None
+
+        target = None
+
+        # Look for a known search engine / website.
+        for word in remaining:
+
+            if word in self.KNOWN_WEBSITES:
+                target = word
+                break
+
+        if target:
+
+            # Remove the target and common filler words.
+            query_words = []
+
+            for word in remaining:
+
+                if word == target:
+                    continue
+
+                if word in self.FILLER_WORDS:
+                    continue
+
+                query_words.append(word)
+
+            query = " ".join(query_words)
+
+            return target, query
+
+        # No known engine specified.
+        # Use Google as default.
+        query_words = [
+            word
+            for word in remaining
+            if word not in self.FILLER_WORDS
+        ]
+
+        query = " ".join(query_words)
+
+        return "google", query
+
+    def parse_open(self, words, action_index):
+
+        remaining = words[action_index + 1:]
+
+        if not remaining:
+            return None
+
+        # Prefer a known target anywhere after "open".
+        target = self.find_target(remaining)
+
+        if target:
+            return target
+
+        # Otherwise use the first meaningful word.
+        for word in remaining:
+
+            if word not in self.FILLER_WORDS:
+                return word
+
+        return None
+
     def parse(self, text):
 
-        # Preserve the user's actual words for AI.
+        # Preserve exactly what the user said for AI.
         original_text = text.lower().strip()
 
         if not original_text:
             return None
 
-        # Remove only optional command prefixes for command detection.
-        command_text = self.clean_text(original_text)
+        command_text = self.clean_text(
+            original_text
+        )
 
         words = command_text.split()
 
         if not words:
             return None
 
-        action = None
+        action = self.find_action(words)
+
         target = None
         query = None
 
-        # Find an action.
-        for word in words:
-            if word in self.ACTION_SYNONYMS:
-                action = self.ACTION_SYNONYMS[word]
+        # --------------------------------
+        # NO ACTION
+        # --------------------------------
+
+        if action is None:
+
+            return Command(
+                raw_text=original_text,
+                action=None,
+                target=None,
+                query=None
+            )
+
+        # --------------------------------
+        # FIND ACTION POSITION
+        # --------------------------------
+
+        action_index = None
+
+        # Multi-word action: "look up"
+        for index in range(len(words) - 1):
+
+            phrase = f"{words[index]} {words[index + 1]}"
+
+            if phrase == "look up":
+
+                action_index = index
                 break
 
-        # Find known application or website.
-        for word in words:
-            if word in self.KNOWN_APPS:
-                target = word
-                break
+        # Single-word action
+        if action_index is None:
 
-            if word in self.KNOWN_WEBSITES:
-                target = word
-                break
+            for index, word in enumerate(words):
 
-        # Handle structured commands.
-        if action is not None:
-
-            action_index = None
-
-            for i, word in enumerate(words):
                 if word in self.ACTION_SYNONYMS:
-                    action_index = i
+
+                    action_index = index
                     break
 
-            if action_index is not None:
+        if action_index is None:
 
-                remaining = words[action_index + 1:]
+            return Command(
+                raw_text=original_text,
+                action=action
+            )
 
-                if remaining:
-                    if target is None:
-                        target = remaining[0]
+        # --------------------------------
+        # OPEN
+        # --------------------------------
 
-                    if len(remaining) > 1:
-                        query = " ".join(remaining[1:])
+        if action == "open":
 
-        # IMPORTANT:
-        # raw_text contains the user's actual question,
-        # not the command-cleaned version.
+            target = self.parse_open(
+                words,
+                action_index
+            )
+
+        # --------------------------------
+        # SEARCH
+        # --------------------------------
+
+        elif action == "search":
+
+            target, query = self.parse_search(
+                words,
+                action_index
+            )
+
+        # --------------------------------
+        # TIME / DATE
+        # --------------------------------
+
+        elif action in ["time", "date"]:
+
+            pass
+
         return Command(
             raw_text=original_text,
             action=action,

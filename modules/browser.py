@@ -90,13 +90,7 @@ class BrowserHandler:
                 return "What would you like me to search for?"
 
             if engine not in self.search_engines:
-
                 engine = "google"
-
-                # If the parser interpreted the first word
-                # as the search target, include it in the query.
-                if command.target:
-                    query = f"{command.target} {query}"
 
             encoded_query = quote_plus(query)
 
@@ -107,5 +101,5 @@ class BrowserHandler:
             webbrowser.open(url)
 
             return f"Searching {engine.title()} for {query}..."
-
+        
         return None
