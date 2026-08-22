@@ -47,8 +47,14 @@ class CommandParser:
         "notepad",
         "calculator",
         "paint",
-        "cmd"
+        "cmd",
+        "downloads",
+        "documents",
+        "desktop",
+        "explorer",
+        "whatsapp"
     }
+
 
     KNOWN_WEBSITES = {
         "youtube",

@@ -1,3 +1,4 @@
+import os 
 import subprocess
 import threading
 import time
@@ -16,7 +17,23 @@ class SystemHandler:
             "calculator": "calc.exe",
             "paint": "mspaint.exe",
             "cmd": "cmd.exe",
-            "chrome": r"C:\Program Files\Google\Chrome\Application\chrome.exe"
+            "chrome": r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+            "explorer": "explorer.exe"
+        }
+
+        self.folders = {
+            "downloads": os.path.join(
+                os.path.expanduser("~"),
+                "Downloads"
+            ),
+            "documents": os.path.join(
+                os.path.expanduser("~"),
+                "Documents"
+            ),
+            "desktop": os.path.join(
+                os.path.expanduser("~"),
+                "Desktop"
+            )
         }
 
     def start_timer(self, seconds):
@@ -25,10 +42,6 @@ class SystemHandler:
     def handle(self, command):
 
         query = command.raw_text.lower()
-
-        # -----------------------------
-        # TIMER
-        # -----------------------------
 
         if "timer" in query:
 
@@ -59,17 +72,11 @@ class SystemHandler:
 
             return "Please specify how long you want the timer to be."
 
-        # -----------------------------
-        # TIME
-        # -----------------------------
 
         if command.action == "time":
 
             return datetime.now().strftime("%I:%M %p")
 
-        # -----------------------------
-        # DATE
-        # -----------------------------
 
         elif command.action == "date":
 
@@ -81,14 +88,22 @@ class SystemHandler:
 
         elif command.action == "open":
 
-            app = command.target
+            target = command.target
 
-            if app in self.apps:
+            if target in self.apps:
 
                 subprocess.Popen(
-                    self.apps[app]
+                    self.apps[target]
                 )
 
-                return f"Opening {app.title()}..."
+                return f"Opening {target.title()}..."
+
+            if target in self.folders:
+
+                os.startfile(
+                    self.folders[target]
+                )
+
+                return f"Opening {target.title()}..."
 
         return None
