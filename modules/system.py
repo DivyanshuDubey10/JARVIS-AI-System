@@ -1,16 +1,13 @@
-import os 
+import os
 import subprocess
-import threading
-import time
 import re
+
 from datetime import datetime
 
 
 class SystemHandler:
 
-    def __init__(self, timer_callback=None):
-
-        self.timer_callback = timer_callback
+    def __init__(self):
 
         self.apps = {
             "notepad": "notepad.exe",
@@ -26,22 +23,25 @@ class SystemHandler:
                 os.path.expanduser("~"),
                 "Downloads"
             ),
+
             "documents": os.path.join(
                 os.path.expanduser("~"),
                 "Documents"
             ),
+
             "desktop": os.path.join(
                 os.path.expanduser("~"),
                 "Desktop"
             )
         }
 
-    def start_timer(self, seconds):
-        return seconds
-
     def handle(self, command):
 
         query = command.raw_text.lower()
+
+        # -----------------------------
+        # TIMER
+        # -----------------------------
 
         if "timer" in query:
 
@@ -56,12 +56,15 @@ class SystemHandler:
                 unit = match.group(2)
 
                 if "second" in unit:
+
                     seconds = amount
 
                 elif "minute" in unit:
+
                     seconds = amount * 60
 
                 else:
+
                     seconds = amount * 3600
 
                 return {
@@ -72,24 +75,35 @@ class SystemHandler:
 
             return "Please specify how long you want the timer to be."
 
+        # -----------------------------
+        # TIME
+        # -----------------------------
 
         if command.action == "time":
 
-            return datetime.now().strftime("%I:%M %p")
+            return datetime.now().strftime(
+                "%I:%M %p"
+            )
 
+        # -----------------------------
+        # DATE
+        # -----------------------------
 
         elif command.action == "date":
 
-            return datetime.now().strftime("%d %B %Y")
+            return datetime.now().strftime(
+                "%d %B %Y"
+            )
 
         # -----------------------------
-        # OPEN APP
+        # OPEN
         # -----------------------------
 
         elif command.action == "open":
 
             target = command.target
 
+            # Open application
             if target in self.apps:
 
                 subprocess.Popen(
@@ -98,6 +112,7 @@ class SystemHandler:
 
                 return f"Opening {target.title()}..."
 
+            # Open folder
             if target in self.folders:
 
                 os.startfile(

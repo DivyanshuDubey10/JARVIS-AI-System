@@ -6,10 +6,10 @@ from modules.ai import AIHandler
 
 class CommandRouter:
 
-    def __init__(self, timer_callback=None):
+    def __init__(self):
 
         self.handlers = [
-            SystemHandler(timer_callback),
+            SystemHandler(),
             BrowserHandler(),
             SystemInfoHandler(),
         ]
@@ -26,9 +26,3 @@ class CommandRouter:
                 return result
 
         return self.ai.handle(command, history)
-
-    def start_timer(self, seconds):
-
-        system_handler = self.handlers[0]
-
-        system_handler.start_timer(seconds)
