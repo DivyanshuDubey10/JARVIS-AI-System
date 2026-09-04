@@ -17,24 +17,22 @@ class AIService:
 
             response = self.client.chat(
                 model=self.model,
-
                 messages=[
                     {
                         "role": "user",
-                        "content": prompt
+                        "content": f"{prompt}\n\n/no_think"
                     }
                 ],
-
                 options={
                     "temperature": 0.4,
                     "num_predict": 150
                 },
-
                 think=False
             )
-
+            
             return response.message.content
-
+            
+            
         except Exception as e:
 
             print("OLLAMA ERROR:", repr(e))
