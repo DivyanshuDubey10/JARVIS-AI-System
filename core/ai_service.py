@@ -5,7 +5,7 @@ class AIService:
 
     def __init__(self):
 
-        self.model = "qwen3:1.7b"
+        self.model = "qwen3:4b"
 
         self.client = ollama.Client(
             host="http://127.0.0.1:11434"
