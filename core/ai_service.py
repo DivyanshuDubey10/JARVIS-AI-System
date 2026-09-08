@@ -5,7 +5,7 @@ class AIService:
 
     def __init__(self):
 
-        self.model = "qwen3:4b"
+        self.model = "qwen3:4b-instruct"
 
         self.client = ollama.Client(
             host="http://127.0.0.1:11434"
@@ -25,12 +25,16 @@ class AIService:
                 ],
                 options={
                     "temperature": 0.4,
-                    "num_predict": 150
+                    "num_predict": 500
                 },
                 think=False
             )
             
-            return response.message.content
+            content = response.message.content
+            if "</think>" in content:
+                content = content.split("</think>")[-1].strip()
+            return content
+        
             
             
         except Exception as e:

@@ -93,7 +93,7 @@ class Assistant:
             # EXIT
             # --------------------------------
 
-            if command == "exit":
+            if command.lower() in ["exit", "goodbye", "quit"]:
 
                 self.respond("Goodbye.")
 
@@ -193,17 +193,6 @@ class Assistant:
                 command
             )
 
-            if parsed_command:
-
-                print(
-                    f"Command → "
-                    f"Action: "
-                    f"{parsed_command.action}, "
-                    f"Target: "
-                    f"{parsed_command.target}, "
-                    f"Query: "
-                    f"{parsed_command.query}"
-                )
 
             if parsed_command is None:
                 continue

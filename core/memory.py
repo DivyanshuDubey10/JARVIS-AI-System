@@ -1,5 +1,5 @@
 class ConversationMemory:
-    def __init__(self, max_messages = 5):
+    def __init__(self, max_messages = 10):
         self.max_messages = max_messages
         self.messages = []
         
