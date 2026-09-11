@@ -93,7 +93,7 @@ class Assistant:
             # EXIT
             # --------------------------------
 
-            if command.lower() in ["exit", "goodbye", "quit"]:
+            if command.lower() in ["exit", "goodbye", "quit", "bye"]:
 
                 self.respond("Goodbye.")
 

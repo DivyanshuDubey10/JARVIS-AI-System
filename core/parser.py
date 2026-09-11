@@ -72,6 +72,15 @@ class CommandParser:
     }
 
     KNOWN_APPS = {
+        "microsoft store",
+        "microsoft edge",
+        "visual studio code",
+        "vs code",
+        "google chrome",
+        "windows media player",
+        "task manager",
+        "control panel",
+
         "chrome",
         "notepad",
         "calculator",
@@ -81,7 +90,16 @@ class CommandParser:
         "documents",
         "desktop",
         "explorer",
-        "whatsapp"
+        "whatsapp",
+        "settings",
+        "outlook",
+        "word",
+        "excel",
+        "powerpoint",
+        "onenote",
+        "firefox",
+        "spotify",
+        "teams"
     }
 
     KNOWN_WEBSITES = {
@@ -134,17 +152,27 @@ class CommandParser:
 
     def find_target(self, words):
 
-        # First prioritize known apps/folders.
-        for word in words:
+        # Check multi-word targets first.
+        for app in sorted(
+            self.KNOWN_APPS,
+            key=lambda x: len(x.split()),
+            reverse=True
+        ):
 
-            if word in self.KNOWN_APPS:
-                return word
+            app_words = app.split()
 
-        # Then websites.
-        for word in words:
+            for i in range(
+                len(words) - len(app_words) + 1
+            ):
 
-            if word in self.KNOWN_WEBSITES:
-                return word
+                if words[i:i + len(app_words)] == app_words:
+                    return app
+
+        # Then check websites.
+        for website in self.KNOWN_WEBSITES:
+
+            if website in words:
+                return website
 
         return None
 
