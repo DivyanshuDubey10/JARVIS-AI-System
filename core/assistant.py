@@ -58,33 +58,49 @@ class Assistant:
 
     def run(self):
 
-        print("=" * 50)
-        print("JARVIS AI SYSTEM")
-        print("Type 'exit' to quit.")
-        print("=" * 50)
+        print("=" * 60)
+        print("                 JARVIS AI SYSTEM")
+        print("=" * 60)
+        print()
+        print("Status   : ONLINE")
+        print("Voice    : ACTIVE")
+        print("AI       : NVIDIA Nemotron")
+        print("Fallback : Qwen3 4B Instruct")
+        print()
+        print("-" * 60)
+        print('Say "Jarvis" to wake me.')
+        print("-" * 60)
+        print()
 
         WAKE_WORD = "jarvis"
 
         while True:
 
             # --------------------------------
-            # SLEEP TIMEOUT
+            # SLEEP MODE
             # --------------------------------
 
-            if (
-                self.awake
-                and time.time() - self.last_activity > 30
-            ):
+            if not self.awake:
 
-                print("Going back to sleep...")
+                command = self.listener.listen_for_wake_word()
 
-                self.awake = False
+                if not command:
+                    continue
+
+                if command == WAKE_WORD:
+
+                    self.awake = True
+                    self.last_activity = time.time()
+
+                    self.respond("Yes Sir?")
+
+                continue
 
             # --------------------------------
-            # LISTEN
+            # ACTIVE MODE
             # --------------------------------
 
-            command = self.listener.listen()
+            command = self.listener.listen_for_command()
 
             if not command:
                 continue
@@ -93,7 +109,12 @@ class Assistant:
             # EXIT
             # --------------------------------
 
-            if command.lower() in ["exit", "goodbye", "quit", "bye"]:
+            if command.lower() in [
+                "exit",
+                "goodbye",
+                "quit",
+                "bye"
+            ]:
 
                 self.respond("Goodbye.")
 
@@ -103,7 +124,7 @@ class Assistant:
             # STOP
             # --------------------------------
 
-            if command in [
+            if command.lower() in [
                 "stop",
                 "cancel",
                 "quiet"
@@ -114,36 +135,16 @@ class Assistant:
                 continue
 
             # --------------------------------
-            # WAKE WORD
-            # --------------------------------
-
-            if command == WAKE_WORD:
-
-                self.awake = True
-                self.last_activity = time.time()
-
-                self.respond("Yes?")
-
-                continue
-
-            # --------------------------------
             # WAKE WORD + COMMAND
             # --------------------------------
 
-            if command.startswith(
-                WAKE_WORD + " "
-            ):
-
-                self.awake = True
-                self.last_activity = time.time()
+            if command.startswith(WAKE_WORD + " "):
 
                 command = command[
                     len(WAKE_WORD):
                 ].strip()
 
-            else:
-
-                self.last_activity = time.time()
+            self.last_activity = time.time()
 
             # --------------------------------
             # MEMORY QUESTION
@@ -193,7 +194,6 @@ class Assistant:
                 command
             )
 
-
             if parsed_command is None:
                 continue
 
@@ -232,10 +232,8 @@ class Assistant:
                     message
                 )
 
-                # Confirm timer
                 self.respond(message)
 
-                # Run timer
                 self.run_countdown(
                     seconds
                 )

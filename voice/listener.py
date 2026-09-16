@@ -26,7 +26,42 @@ class VoiceListener:
                 f"{self.recognizer.energy_threshold:.2f}"
             )
 
-    def listen(self):
+    def listen_for_wake_word(self):
+
+        with sr.Microphone() as source:
+            print("Waiting for wake word...")
+
+            try:
+                audio = self.recognizer.listen(
+                    source,
+                    timeout=5,
+                    phrase_time_limit=5
+                )
+
+            except sr.WaitTimeoutError:
+                return ""
+
+        try:
+            text = self.recognizer.recognize_google(audio)
+
+            text = text.lower().strip()
+
+            if text:
+                print(f"Heard: {text}")
+
+            if "jarvis" in text:
+                return "jarvis"
+
+            return ""
+
+        except sr.UnknownValueError:
+            return ""
+
+        except sr.RequestError as e:
+            print(f"Speech recognition error: {e}")
+            return ""
+
+    def listen_for_command(self):
 
         with sr.Microphone() as source:
             print("Listening...")

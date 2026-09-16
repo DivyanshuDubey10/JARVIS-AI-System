@@ -1,63 +1,73 @@
-import ollama
+import os
+from openai import OpenAI
+from dotenv import load_dotenv
 from core.tool_manager import ToolManager
+import ollama
+
+load_dotenv()
 
 
 class AIService:
 
     def __init__(self):
-        self.model = "qwen3:4b-instruct"
 
-        self.client = ollama.Client(
+        # NVIDIA cloud model
+        self.nvidia_model = "nvidia/nemotron-3-super-120b-a12b"
+
+        self.nvidia_client = OpenAI(
+            base_url="https://integrate.api.nvidia.com/v1",
+            api_key=os.getenv("OPENAI_API_KEY")
+        )
+
+        # Local fallback
+        self.local_model = "qwen3:4b-instruct"
+
+        self.local_client = ollama.Client(
             host="http://127.0.0.1:11434"
         )
 
         self.tool_manager = ToolManager()
 
     def generate(self, prompt):
-
-        tools = []
-
-        for tool in self.tool_manager.get_all_tools():
-
-            tools.append({
-                "type": "function",
-                "function": {
-                    "name": tool.name,
-                    "description": tool.description,
-                    "parameters": tool.parameters
-                }
-            })
+        
+        print(">>> AI GENERATE CALLED")
 
         try:
 
-            response = self.client.chat(
-                model=self.model,
+            response = self.nvidia_client.chat.completions.create(
+                model=self.nvidia_model,
                 messages=[
                     {
                         "role": "user",
                         "content": prompt
                     }
                 ],
-                tools=tools
+                max_tokens=500,
+                temperature=0.7
             )
 
-            if response.message.tool_calls:
-
-                for tool_call in response.message.tool_calls:
-
-                    tool_name = tool_call.function.name
-                    arguments = tool_call.function.arguments
-
-                    result = self.tool_manager.execute(
-                        tool_name,
-                        **arguments
-                    )
-
-                    return result
-
-            return response.message.content
+            return response.choices[0].message.content
 
         except Exception as e:
 
-            print("OLLAMA ERROR:", repr(e))
-            return f"AI Error: {e}"
+            print("NVIDIA ERROR:", repr(e))
+            print("Falling back to local model...")
+
+            try:
+
+                response = self.local_client.chat(
+                    model=self.local_model,
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ]
+                )
+
+                return response.message.content
+
+            except Exception as local_error:
+
+                print("OLLAMA ERROR:", repr(local_error))
+                return f"AI Error: {local_error}"
