@@ -124,9 +124,35 @@ class SystemHandler:
         }
         
     def open_app(self, app_name):
+
+        app_name = app_name.lower().strip()
+
         if app_name in self.apps:
-            subprocess.Popen(self.apps[app_name])
+
+            app_path = self.apps[app_name]
+
+            if app_path.startswith("shell:"):
+
+                subprocess.Popen(
+                    ["explorer.exe", app_path]
+                )
+
+            elif app_path.endswith(":"):
+
+                subprocess.Popen(
+                    [
+                        "powershell",
+                        "-Command",
+                        f'Start-Process "{app_path}"'
+                    ]
+                )
+
+            else:
+
+                subprocess.Popen(app_path)
+
             return f"Opening {app_name.title()}..."
+
         return f"Application '{app_name}' not found."
 
     def handle(self, command):

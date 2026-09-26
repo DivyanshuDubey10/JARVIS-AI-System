@@ -47,3 +47,17 @@ class ToolManager:
 
         except Exception as e:
             return f"Tool '{name}' failed: {e}"
+        
+    def get_tool_definitions(self):
+
+        definitions = []
+
+        for tool in self.tools.values():
+
+            definitions.append({
+                "name": tool.name,
+                "description": tool.description,
+                "parameters": tool.parameters
+            })
+
+        return definitions

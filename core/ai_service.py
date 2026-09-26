@@ -29,10 +29,10 @@ class AIService:
         self.tool_manager = ToolManager()
 
     def generate(self, prompt):
-        
-        print(">>> AI GENERATE CALLED")
 
         try:
+
+            tool_definitions = self.tool_manager.get_tool_definitions()
 
             response = self.nvidia_client.chat.completions.create(
                 model=self.nvidia_model,
@@ -42,11 +42,89 @@ class AIService:
                         "content": prompt
                     }
                 ],
+                tools=[
+                    {
+                        "type": "function",
+                        "function": tool
+                    }
+                    for tool in tool_definitions
+                ],
                 max_tokens=500,
                 temperature=0.7
             )
 
-            return response.choices[0].message.content
+            message = response.choices[0].message
+
+            # --------------------------------
+            # TOOL CALL
+            # --------------------------------
+
+            if message.tool_calls:
+
+                tool_call = message.tool_calls[0]
+
+                tool_name = tool_call.function.name
+                arguments = tool_call.function.arguments
+
+                import json
+
+                arguments = json.loads(arguments)
+
+                print()
+                print("AI TOOL CALL:")
+                print(f"Tool: {tool_name}")
+                print(f"Arguments: {arguments}")
+                print()
+
+                result = self.tool_manager.execute(
+                    tool_name,
+                    **arguments
+                )
+
+                print("TOOL RESULT:")
+                print(result)
+
+                # --------------------------------
+                # SEND TOOL RESULT BACK TO AI
+                # --------------------------------
+
+                follow_up = self.nvidia_client.chat.completions.create(
+                    model=self.nvidia_model,
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": prompt
+                        },
+                        {
+                            "role": "assistant",
+                            "tool_calls": [
+                                {
+                                    "id": tool_call.id,
+                                    "type": "function",
+                                    "function": {
+                                        "name": tool_name,
+                                        "arguments": tool_call.function.arguments
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "role": "tool",
+                            "tool_call_id": tool_call.id,
+                            "content": str(result)
+                        }
+                    ],
+                    max_tokens=500,
+                    temperature=0.7
+                )
+
+                return follow_up.choices[0].message.content
+
+            # --------------------------------
+            # NORMAL AI RESPONSE
+            # --------------------------------
+
+            return message.content
 
         except Exception as e:
 

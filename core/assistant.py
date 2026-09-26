@@ -56,7 +56,7 @@ class Assistant:
     # MAIN LOOP
     # --------------------------------
 
-    def run(self):
+    def run(self, initial_command=None):
 
         print("=" * 60)
         print("                 JARVIS AI SYSTEM")
@@ -73,6 +73,53 @@ class Assistant:
         print()
 
         WAKE_WORD = "jarvis"
+        
+        if initial_command is not None:
+
+            self.awake = True
+            self.last_activity = time.time()
+
+            command = initial_command.strip()
+
+            if command:
+                parsed_command = self.parser.parse(command)
+
+                if parsed_command is not None:
+
+                    history = self.memory.get_messages()
+
+                    response = self.router.handle(
+                        parsed_command,
+                        history
+                    )
+
+                    self.memory.add_user(
+                        parsed_command.raw_text
+                    )
+
+                    if (
+                        isinstance(response, dict)
+                        and response.get("type") == "timer"
+                    ):
+
+                        message = response["message"]
+                        seconds = response["seconds"]
+
+                        self.memory.add_assistant(
+                            message
+                        )
+
+                        self.respond(message)
+
+                        self.run_countdown(seconds)
+
+                    elif response:
+
+                        self.memory.add_assistant(
+                            response
+                        )
+
+                        self.respond(response)
 
         while True:
 
