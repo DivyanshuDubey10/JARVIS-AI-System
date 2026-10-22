@@ -73,6 +73,10 @@ class SpeechEngine:
             try:
                 asyncio.run(self._speak(text))
 
+            except Exception as e:
+                print(f"Speech synthesis error: {e}")
+                print("JARVIS will continue without voice output.")
+
             finally:
                 self.listening_for_stop = False
 

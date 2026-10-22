@@ -1,8 +1,10 @@
 import os
-from openai import OpenAI
+import json
+
 from dotenv import load_dotenv
+from openai import OpenAI
+
 from core.tool_manager import ToolManager
-import ollama
 
 load_dotenv()
 
@@ -11,19 +13,13 @@ class AIService:
 
     def __init__(self):
 
-        # NVIDIA cloud model
-        self.nvidia_model = "nvidia/nemotron-3-super-120b-a12b"
+        self.nvidia_model = "nvidia/nemotron-3-ultra-550b-a55b"
 
         self.nvidia_client = OpenAI(
             base_url="https://integrate.api.nvidia.com/v1",
-            api_key=os.getenv("OPENAI_API_KEY")
-        )
-
-        # Local fallback
-        self.local_model = "qwen3:4b-instruct"
-
-        self.local_client = ollama.Client(
-            host="http://127.0.0.1:11434"
+            api_key=(
+                os.getenv("OPENAI_API_KEY")
+            ),
         )
 
         self.tool_manager = ToolManager()
@@ -31,7 +27,6 @@ class AIService:
     def generate(self, prompt):
 
         try:
-
             tool_definitions = self.tool_manager.get_tool_definitions()
 
             response = self.nvidia_client.chat.completions.create(
@@ -39,113 +34,80 @@ class AIService:
                 messages=[
                     {
                         "role": "user",
-                        "content": prompt
+                        "content": prompt,
                     }
                 ],
                 tools=[
                     {
                         "type": "function",
-                        "function": tool
+                        "function": tool,
                     }
                     for tool in tool_definitions
                 ],
                 max_tokens=500,
-                temperature=0.7
+                temperature=0.7,
             )
 
             message = response.choices[0].message
 
-            # --------------------------------
-            # TOOL CALL
-            # --------------------------------
+            if not message.tool_calls:
+                return message.content or "NVIDIA returned an empty response."
 
-            if message.tool_calls:
+            # Execute the first requested tool.
+            tool_call = message.tool_calls[0]
+            tool_name = tool_call.function.name
+            arguments = json.loads(tool_call.function.arguments)
 
-                tool_call = message.tool_calls[0]
+            print(f"\nAI TOOL CALL: {tool_name}")
+            print(f"Arguments: {arguments}")
 
-                tool_name = tool_call.function.name
-                arguments = tool_call.function.arguments
+            result = self.tool_manager.execute(
+                tool_name,
+                **arguments,
+            )
 
-                import json
+            print(f"TOOL RESULT: {result}")
 
-                arguments = json.loads(arguments)
+            # Return the tool result to NVIDIA for a final response.
+            follow_up = self.nvidia_client.chat.completions.create(
+                model=self.nvidia_model,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": prompt,
+                    },
+                    {
+                        "role": "assistant",
+                        "content": message.content,
+                        "tool_calls": [
+                            {
+                                "id": tool_call.id,
+                                "type": "function",
+                                "function": {
+                                    "name": tool_name,
+                                    "arguments": tool_call.function.arguments,
+                                },
+                            }
+                        ],
+                    },
+                    {
+                        "role": "tool",
+                        "tool_call_id": tool_call.id,
+                        "content": str(result),
+                    },
+                ],
+                max_tokens=500,
+                temperature=0.7,
+            )
 
-                print()
-                print("AI TOOL CALL:")
-                print(f"Tool: {tool_name}")
-                print(f"Arguments: {arguments}")
-                print()
-
-                result = self.tool_manager.execute(
-                    tool_name,
-                    **arguments
-                )
-
-                print("TOOL RESULT:")
-                print(result)
-
-                # --------------------------------
-                # SEND TOOL RESULT BACK TO AI
-                # --------------------------------
-
-                follow_up = self.nvidia_client.chat.completions.create(
-                    model=self.nvidia_model,
-                    messages=[
-                        {
-                            "role": "user",
-                            "content": prompt
-                        },
-                        {
-                            "role": "assistant",
-                            "tool_calls": [
-                                {
-                                    "id": tool_call.id,
-                                    "type": "function",
-                                    "function": {
-                                        "name": tool_name,
-                                        "arguments": tool_call.function.arguments
-                                    }
-                                }
-                            ]
-                        },
-                        {
-                            "role": "tool",
-                            "tool_call_id": tool_call.id,
-                            "content": str(result)
-                        }
-                    ],
-                    max_tokens=500,
-                    temperature=0.7
-                )
-
-                return follow_up.choices[0].message.content
-
-            # --------------------------------
-            # NORMAL AI RESPONSE
-            # --------------------------------
-
-            return message.content
+            return (
+                follow_up.choices[0].message.content
+                or str(result)
+            )
 
         except Exception as e:
-
-            print("NVIDIA ERROR:", repr(e))
-            print("Falling back to local model...")
-
-            try:
-
-                response = self.local_client.chat(
-                    model=self.local_model,
-                    messages=[
-                        {
-                            "role": "user",
-                            "content": prompt
-                        }
-                    ]
-                )
-
-                return response.message.content
-
-            except Exception as local_error:
-
-                print("OLLAMA ERROR:", repr(local_error))
-                return f"AI Error: {local_error}"
+            print("NVIDIA API ERROR:", repr(e))
+            return (
+                "I'm unable to complete that request because "
+                "the NVIDIA AI service is currently unavailable."
+            )
