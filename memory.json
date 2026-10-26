@@ -1,0 +1,8 @@
+{
+    "current_project": "concept iq ",
+    "project_description": "A Python desktop voice assistant using NVIDIA Nemotron through the NVIDIA API.",
+    "architecture": "CommandRouter, CommandParser, AIHandler, AIService, ToolManager, ConversationMemory, PersistentMemory, SpeechEngine, and VoiceListener.",
+    "capabilities": "Natural-language conversations, conversation history, voice input and output, command routing, application launching through tools, and persistent JSON memory.",
+    "response_preference": "Clear and concise answers with step-by-step technical instructions.",
+    "my": "my current project is model pilot"
+}

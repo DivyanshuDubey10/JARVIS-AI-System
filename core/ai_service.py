@@ -1,3 +1,4 @@
+
 import os
 import json
 
@@ -10,103 +11,101 @@ load_dotenv()
 
 
 class AIService:
-
     def __init__(self):
-
         self.nvidia_model = "nvidia/nemotron-3-ultra-550b-a55b"
 
         self.nvidia_client = OpenAI(
             base_url="https://integrate.api.nvidia.com/v1",
-            api_key=(
-                os.getenv("OPENAI_API_KEY")
-            ),
+            api_key=os.getenv("OPENAI_API_KEY"),
         )
 
         self.tool_manager = ToolManager()
+        self.max_tool_rounds = 5
 
     def generate(self, prompt):
-
         try:
             tool_definitions = self.tool_manager.get_tool_definitions()
 
-            response = self.nvidia_client.chat.completions.create(
-                model=self.nvidia_model,
-                messages=[
-                    {
-                        "role": "user",
-                        "content": prompt,
-                    }
-                ],
-                tools=[
-                    {
-                        "type": "function",
-                        "function": tool,
-                    }
-                    for tool in tool_definitions
-                ],
-                max_tokens=500,
-                temperature=0.7,
-            )
+            tools = [
+                {
+                    "type": "function",
+                    "function": tool,
+                }
+                for tool in tool_definitions
+            ]
 
-            message = response.choices[0].message
+            messages = [
+                {
+                    "role": "user",
+                    "content": prompt,
+                }
+            ]
 
-            if not message.tool_calls:
-                return message.content or "NVIDIA returned an empty response."
+            for round_number in range(self.max_tool_rounds + 1):
+                response = self.nvidia_client.chat.completions.create(
+                    model=self.nvidia_model,
+                    messages=messages,
+                    tools=tools,
+                    max_tokens=500,
+                    temperature=0.7,
+                )
 
-            # Execute the first requested tool.
-            tool_call = message.tool_calls[0]
-            tool_name = tool_call.function.name
-            arguments = json.loads(tool_call.function.arguments)
+                message = response.choices[0].message
 
-            print(f"\nAI TOOL CALL: {tool_name}")
-            print(f"Arguments: {arguments}")
+                if not message.tool_calls:
+                    return (
+                        message.content
+                        or "NVIDIA returned an empty response."
+                    )
 
-            result = self.tool_manager.execute(
-                tool_name,
-                **arguments,
-            )
+                # Preserve the assistant's complete tool-call message.
+                messages.append(message.model_dump(exclude_none=True))
 
-            print(f"TOOL RESULT: {result}")
+                # Execute every tool requested in this response.
+                for tool_call in message.tool_calls:
+                    tool_name = tool_call.function.name
 
-            # Return the tool result to NVIDIA for a final response.
-            follow_up = self.nvidia_client.chat.completions.create(
-                model=self.nvidia_model,
-                messages=[
-                    {
-                        "role": "user",
-                        "content": prompt,
-                    },
-                    {
-                        "role": "assistant",
-                        "content": message.content,
-                        "tool_calls": [
-                            {
-                                "id": tool_call.id,
-                                "type": "function",
-                                "function": {
-                                    "name": tool_name,
-                                    "arguments": tool_call.function.arguments,
-                                },
-                            }
-                        ],
-                    },
-                    {
-                        "role": "tool",
-                        "tool_call_id": tool_call.id,
-                        "content": str(result),
-                    },
-                ],
-                max_tokens=500,
-                temperature=0.7,
-            )
+                    print(f"\nAI TOOL CALL: {tool_name}")
+
+                    try:
+                        arguments = json.loads(
+                            tool_call.function.arguments or "{}"
+                        )
+
+                        if not isinstance(arguments, dict):
+                            raise ValueError(
+                                "Tool arguments must be a JSON object."
+                            )
+
+                        print(f"Arguments: {arguments}")
+
+                        result = self.tool_manager.execute(
+                            tool_name,
+                            **arguments,
+                        )
+
+                    except Exception as tool_error:
+                        result = f"Tool execution failed: {tool_error}"
+                        print(result)
+
+                    print(f"TOOL RESULT: {result}")
+
+                    messages.append(
+                        {
+                            "role": "tool",
+                            "tool_call_id": tool_call.id,
+                            "content": str(result),
+                        }
+                    )
 
             return (
-                follow_up.choices[0].message.content
-                or str(result)
+                "I reached the maximum number of tool-execution rounds. "
+                "Please try a simpler request."
             )
 
         except Exception as e:
             print("NVIDIA API ERROR:", repr(e))
+
             return (
                 "I'm unable to complete that request because "
                 "the NVIDIA AI service is currently unavailable."
