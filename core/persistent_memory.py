@@ -4,16 +4,20 @@ from pathlib import Path
 
 
 class PersistentMemory:
+
     def __init__(self, file_path=None):
+
         if file_path is None:
             project_root = Path(__file__).resolve().parent.parent
             file_path = project_root / "memory.json"
 
         self.file_path = Path(file_path)
         self.memories = {}
+
         self._load()
 
     def _load(self):
+
         if not self.file_path.exists():
             self._save()
             return
@@ -31,6 +35,7 @@ class PersistentMemory:
             ) from error
 
     def _save(self):
+
         with self.file_path.open("w", encoding="utf-8") as file:
             json.dump(
                 self.memories,
@@ -40,16 +45,30 @@ class PersistentMemory:
             )
 
     def remember(self, key, value):
+
         self.memories[key] = value
         self._save()
 
     def recall(self, key):
+
         return self.memories.get(key)
 
     def get_all(self):
+
         return self.memories.copy()
 
+    def search(self, keyword):
+
+        keyword = keyword.lower()
+
+        return {
+            key: value
+            for key, value in self.memories.items()
+            if keyword in key.lower()
+        }
+
     def forget(self, key):
+
         if key in self.memories:
             del self.memories[key]
             self._save()
@@ -58,5 +77,6 @@ class PersistentMemory:
         return False
 
     def clear(self):
+
         self.memories.clear()
         self._save()
